@@ -34,8 +34,8 @@ Notes:
 
 1. Go to `http://localhost:3000`.
 2. In "Create a new session", enter:
-   - title, sport, organizer, group, venue, date, target players
-   - invitees from the dropdown (select one or more test users)
+   - title, sport, organizer, court, date
+   - invitees from the selector (pick up to 3 test users)
 3. Click **Create event**.
 4. Verify you are redirected to `/events/[eventId]`.
 5. Verify:

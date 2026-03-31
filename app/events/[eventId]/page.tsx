@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { deleteEventAction } from "@/app/actions";
 import { AvailabilityMatrix } from "@/components/availability-matrix";
+import { DeleteEventControl } from "@/components/delete-event-control";
 import { FinalizeEventForm } from "@/components/finalize-event-form";
 import { NotificationFeed } from "@/components/notification-feed";
 import { getCurrentUser } from "@/lib/current-user";
@@ -60,15 +60,9 @@ export default async function EventPage({ params }: EventPageProps) {
           </p>
         </div>
         {canDeleteEvent ? (
-          <form action={deleteEventAction} className="pt-2">
-            <input type="hidden" name="eventId" value={event.id} />
-            <button
-              type="submit"
-              className="inline-flex w-full items-center justify-center rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100 sm:w-fit"
-            >
-              Delete event
-            </button>
-          </form>
+          <div className="pt-2">
+            <DeleteEventControl eventId={event.id} eventTitle={event.title} />
+          </div>
         ) : null}
       </section>
 

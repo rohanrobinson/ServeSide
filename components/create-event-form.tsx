@@ -23,17 +23,37 @@ type CreateEventFormProps = {
 export function CreateEventForm({ defaultOrganizerName }: CreateEventFormProps) {
   const [state, formAction, pending] = useActionState(createEventAction, initialState);
   const router = useRouter();
+  const [selectedSport, setSelectedSport] = useState<"pickleball" | "tennis">("pickleball");
   const inviteeOptions = useMemo(
     () => TEST_USERS.filter((user) => user !== defaultOrganizerName),
     [defaultOrganizerName],
   );
-  const [selectedInvitees, setSelectedInvitees] = useState<string[]>(
-    inviteeOptions.slice(0, 3),
+  const [inviteeSelections, setInviteeSelections] = useState<string[]>([
+    inviteeOptions[0] ?? "",
+    inviteeOptions[1] ?? "",
+    inviteeOptions[2] ?? "",
+  ]);
+  const selectedInvitees = useMemo(
+    () =>
+      inviteeSelections.filter(
+        (value, index, array) => value && array.indexOf(value) === index,
+      ),
+    [inviteeSelections],
   );
-  const selectedInviteesSet = useMemo(
-    () => new Set(selectedInvitees),
-    [selectedInvitees],
-  );
+  const courtOptions = useMemo(() => {
+    if (selectedSport === "tennis") {
+      return [
+        "Grant Park Outdoor Courts",
+        "Maggie Daley Park Outdoor Courts",
+        "Waveland Lincoln Park Outdoor Courts",
+      ];
+    }
+
+    return [
+      "Big City Pickle Indoor West Loop",
+      "SPF Indoor Lincoln park",
+    ];
+  }, [selectedSport]);
 
   useEffect(() => {
     if (state.ok && state.eventId) {
@@ -56,13 +76,20 @@ export function CreateEventForm({ defaultOrganizerName }: CreateEventFormProps) 
           <input
             name="title"
             required
-            defaultValue="After-work pickleball"
+            defaultValue="Fun Session with Friends!"
             className="rounded-md border border-zinc-300 px-3 py-2.5"
           />
         </label>
         <label className="grid gap-1 text-sm">
           Sport
-          <select name="sport" defaultValue="pickleball" className="rounded-md border border-zinc-300 px-3 py-2.5">
+          <select
+            name="sport"
+            value={selectedSport}
+            onChange={(event) =>
+              setSelectedSport(event.target.value as "pickleball" | "tennis")
+            }
+            className="rounded-md border border-zinc-300 px-3 py-2.5"
+          >
             <option value="pickleball">Pickleball</option>
             <option value="tennis">Tennis</option>
           </select>
@@ -79,15 +106,17 @@ export function CreateEventForm({ defaultOrganizerName }: CreateEventFormProps) 
         <label className="grid gap-1 text-sm">
           Court
           <select
+            key={selectedSport}
             name="venueArea"
             required
-            defaultValue="Big City Pickle Indoor West Loop"
+            defaultValue={courtOptions[0]}
             className="rounded-md border border-zinc-300 px-3 py-2.5"
           >
-            <option value="Big City Pickle Indoor West Loop">
-              Big City Pickle Indoor West Loop
-            </option>
-            <option value="SPF Indoor Lincoln park">SPF Indoor Lincoln park</option>
+            {courtOptions.map((court) => (
+              <option key={court} value={court}>
+                {court}
+              </option>
+            ))}
           </select>
         </label>
         <label className="grid gap-1 text-sm">
@@ -97,43 +126,45 @@ export function CreateEventForm({ defaultOrganizerName }: CreateEventFormProps) 
       </div>
 
       <label className="grid gap-1 text-sm">
-        Invitees (pick up to 3)
+        Players (pick up to 3)
         <input type="hidden" name="inviteesRaw" value={selectedInvitees.join(", ")} />
         <div className="grid gap-2 rounded-md border border-zinc-300 p-3">
-          {inviteeOptions.map((user) => {
-            const isChecked = selectedInviteesSet.has(user);
-            const maxReached = selectedInvitees.length >= 3;
-            const shouldDisable = maxReached && !isChecked;
-
-            return (
-              <label
-                key={user}
-                className={`flex items-center gap-2 rounded-md px-2 py-2 ${
-                  shouldDisable ? "opacity-45" : "cursor-pointer hover:bg-zinc-50"
-                }`}
+          {[0, 1, 2].map((slotIndex) => (
+            <label key={slotIndex} className="grid gap-1 text-sm">
+              Player {slotIndex + 1}
+              <select
+                value={inviteeSelections[slotIndex] ?? ""}
+                onChange={(event) =>
+                  setInviteeSelections((current) =>
+                    current.map((value, index) =>
+                      index === slotIndex ? event.target.value : value,
+                    ),
+                  )
+                }
+                className="rounded-md border border-zinc-300 px-3 py-2.5"
               >
-                <input
-                  type="checkbox"
-                  checked={isChecked}
-                  disabled={shouldDisable}
-                  onChange={(event) => {
-                    setSelectedInvitees((current) => {
-                      if (event.target.checked) {
-                        if (current.length >= 3) return current;
-                        return [...current, user];
-                      }
-                      return current.filter((entry) => entry !== user);
-                    });
-                  }}
-                  className="h-4 w-4 accent-emerald-600"
-                />
-                <span>{user}</span>
-              </label>
-            );
-          })}
+                <option value="">None</option>
+                {inviteeOptions.map((user) => {
+                  const selectedByOtherSlot = inviteeSelections.some(
+                    (value, index) => index !== slotIndex && value === user,
+                  );
+
+                  return (
+                    <option
+                      key={user}
+                      value={user}
+                      disabled={selectedByOtherSlot}
+                    >
+                      {user}
+                    </option>
+                  );
+                })}
+              </select>
+            </label>
+          ))}
         </div>
         <p className="text-xs text-zinc-500">
-          {selectedInvitees.length}/3 selected
+          {selectedInvitees.length}/3 players selected
         </p>
       </label>
 
@@ -144,7 +175,7 @@ export function CreateEventForm({ defaultOrganizerName }: CreateEventFormProps) 
       <button
         type="submit"
         disabled={pending}
-        className="inline-flex w-full items-center justify-center rounded-md bg-emerald-600 px-4 py-2.5 text-white hover:bg-emerald-700 disabled:opacity-50 sm:w-fit"
+        className="inline-flex w-auto items-center justify-center self-start rounded-md bg-emerald-600 px-4 py-2.5 text-white hover:bg-emerald-700 disabled:opacity-50"
       >
         {pending ? "Creating..." : "Create event"}
       </button>

@@ -12,6 +12,8 @@ export const TEST_USERS = [
   "Sahil",
   "Aaron",
   "Sebastian",
+  "Kysah",
+  "Dhruvit",
 ] as const;
 
 export type TestUser = (typeof TEST_USERS)[number];

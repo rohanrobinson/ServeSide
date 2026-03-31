@@ -12,7 +12,10 @@ export default async function Home() {
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-3 py-5 sm:gap-6 sm:px-4 sm:py-8 md:px-8">
       <header className="grid gap-2">
         <h1 className="text-2xl font-semibold tracking-tight text-emerald-700 sm:text-3xl">
-          🎾 ServeSide Planner
+          🎾 ServeSide Planner{" "}
+          <span style={{ fontFamily: "Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif" }}>
+            {"\u{1F952}"}
+          </span>
         </h1>
         <p className="max-w-3xl text-sm text-zinc-600 sm:text-base">
           Coordinate pickleball and tennis sessions like Partiful: collect availability, auto-pick best slots, and

@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AvailabilityForm } from "@/components/availability-form";
 import { AvailabilityMatrix } from "@/components/availability-matrix";
 import { DeleteEventControl } from "@/components/delete-event-control";
 import { FinalizeEventForm } from "@/components/finalize-event-form";
-import { NotificationFeed } from "@/components/notification-feed";
 import { getCurrentUser } from "@/lib/current-user";
 import { formatDateTime } from "@/lib/time";
 import {
@@ -13,7 +13,6 @@ import {
   getInvitesForEvent,
   getRecommendation,
   getResponsesForEvent,
-  listNotifications,
 } from "@/lib/store";
 
 type EventPageProps = {
@@ -34,8 +33,6 @@ export default async function EventPage({ params }: EventPageProps) {
   const invites = getInvitesForEvent(event.id);
   const recommendation = getRecommendation(event.id);
   const finalizedBlock = getFinalizedBlock(event.id);
-  const notifications = listNotifications(event.id);
-  const inviteUrl = `/join/${event.inviteToken}`;
 
   return (
     <main className="mx-auto grid w-full max-w-6xl gap-4 px-3 py-5 sm:gap-6 sm:px-4 sm:py-8 md:px-8">
@@ -52,18 +49,20 @@ export default async function EventPage({ params }: EventPageProps) {
           <p>Organizer: {event.organizerName}</p>
           <p>Target players: {event.targetPlayers}</p>
           <p>Polling date: {event.dateIso}</p>
-          <p className="break-all">
-            Invite link:{" "}
-            <a className="underline" href={inviteUrl}>
-              {inviteUrl}
-            </a>
-          </p>
         </div>
         {canDeleteEvent ? (
           <div className="pt-2">
             <DeleteEventControl eventId={event.id} eventTitle={event.title} />
           </div>
         ) : null}
+      </section>
+
+      <section className="grid gap-2">
+        <AvailabilityForm
+          inviteToken={event.inviteToken}
+          timeBlocks={timeBlocks}
+          defaultPlayerName={currentUser}
+        />
       </section>
 
       <section className="grid gap-4 md:grid-cols-[2fr_1fr]">
@@ -109,7 +108,6 @@ export default async function EventPage({ params }: EventPageProps) {
               ))}
             </ul>
           </div>
-          <NotificationFeed notifications={notifications} />
         </div>
       </section>
     </main>

@@ -59,3 +59,12 @@ export type NotificationLog = {
   message: string;
   createdAtIso: string;
 };
+
+export type PlanChatMessageRole = "user" | "system";
+
+export type PlanChatMessage = {
+  id: string;
+  role: PlanChatMessageRole;
+  body: string;
+  createdAtIso: string;
+};

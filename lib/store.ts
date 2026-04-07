@@ -5,11 +5,42 @@ import type {
   EventInvite,
   EventRecord,
   NotificationLog,
+  PlanChatMessage,
   ResponseConfidence,
+  Sport,
   TimeBlock,
 } from "@/lib/types";
 
 type EventTimeBlockMap = Record<string, TimeBlock[]>;
+
+type PlanChatStep =
+  | "title"
+  | "sport"
+  | "groupName"
+  | "venueArea"
+  | "dateIso"
+  | "targetPlayers"
+  | "invitees"
+  | "confirm"
+  | "done";
+
+type PlanChatDraft = {
+  organizerName: string;
+  title?: string;
+  sport?: Sport;
+  groupName?: string;
+  venueArea?: string;
+  dateIso?: string;
+  targetPlayers?: number;
+  inviteesRaw?: string;
+};
+
+type PlanChatSession = {
+  messages: PlanChatMessage[];
+  step: PlanChatStep;
+  draft: PlanChatDraft;
+  createdEventId?: string;
+};
 
 type StoreState = {
   events: EventRecord[];
@@ -17,6 +48,7 @@ type StoreState = {
   responses: AvailabilityResponse[];
   notifications: NotificationLog[];
   eventTimeBlocks: EventTimeBlockMap;
+  planChatSessions: Record<string, PlanChatSession>;
 };
 
 type CreateEventInput = Pick<
@@ -92,6 +124,7 @@ function createInitialState(): StoreState {
     responses: [],
     notifications: [],
     eventTimeBlocks: { [seed.event.id]: seed.timeBlocks },
+    planChatSessions: {},
   };
 }
 
@@ -102,6 +135,10 @@ declare global {
 function getStore() {
   if (!globalThis.sportsMvpStore) {
     globalThis.sportsMvpStore = createInitialState();
+  }
+
+  if (!globalThis.sportsMvpStore.planChatSessions) {
+    globalThis.sportsMvpStore.planChatSessions = {};
   }
 
   return globalThis.sportsMvpStore;
@@ -382,4 +419,260 @@ export function getKpiSnapshot() {
           responseRateByEvent.length,
     responseRateByEvent,
   };
+}
+
+function parseSportToken(raw: string): Sport | null {
+  const t = raw.trim().toLowerCase();
+  if (t === "pickleball" || t === "pb" || t === "pickle" || t === "1") {
+    return "pickleball";
+  }
+  if (t === "tennis" || t === "ten" || t === "2") {
+    return "tennis";
+  }
+  return null;
+}
+
+function parseDateIsoInput(raw: string): string | null {
+  const t = raw.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) {
+    return null;
+  }
+  const parsed = new Date(`${t}T12:00:00`);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+  return t;
+}
+
+function pushMessage(session: PlanChatSession, role: PlanChatMessage["role"], body: string) {
+  session.messages.push({
+    id: createId("msg"),
+    role,
+    body,
+    createdAtIso: new Date().toISOString(),
+  });
+}
+
+function ensurePlanChatSession(sessionId: string, organizerName: string) {
+  const store = getStore();
+  if (store.planChatSessions[sessionId]) {
+    store.planChatSessions[sessionId].draft.organizerName = organizerName;
+    return;
+  }
+
+  const session: PlanChatSession = {
+    step: "title",
+    draft: { organizerName },
+    messages: [],
+  };
+
+  pushMessage(
+    session,
+    "system",
+    `Hi ${organizerName}! I'll walk you through creating a session.\n\nWhat should we call this event? (At least 3 characters.)`,
+  );
+
+  store.planChatSessions[sessionId] = session;
+}
+
+export function initPlanChatSessionState(
+  sessionId: string,
+  organizerName: string,
+): PlanChatMessage[] {
+  ensurePlanChatSession(sessionId, organizerName);
+  return [...getStore().planChatSessions[sessionId].messages];
+}
+
+function formatPlanSummary(draft: PlanChatDraft): string {
+  const sportLabel = draft.sport === "pickleball" ? "Pickleball" : "Tennis";
+  return [
+    "Here's the plan:",
+    `• Title: ${draft.title}`,
+    `• Sport: ${sportLabel}`,
+    `• Group: ${draft.groupName}`,
+    `• Venue / area: ${draft.venueArea}`,
+    `• Date: ${draft.dateIso}`,
+    `• Target players: ${draft.targetPlayers}`,
+    `• Invitees: ${draft.inviteesRaw}`,
+    "",
+    "Reply **yes** to create this event, or **no** to change the invite list.",
+  ].join("\n");
+}
+
+export function submitPlanChatMessage(
+  sessionId: string,
+  organizerName: string,
+  text: string,
+): { messages: PlanChatMessage[]; eventId?: string } {
+  const store = getStore();
+  ensurePlanChatSession(sessionId, organizerName);
+  const session = store.planChatSessions[sessionId];
+  const trimmed = text.trim();
+  const nowIso = new Date().toISOString();
+
+  if (session.step === "done") {
+    session.messages.push({
+      id: createId("msg"),
+      role: "user",
+      body: trimmed,
+      createdAtIso: nowIso,
+    });
+    pushMessage(
+      session,
+      "system",
+      "This chat already created an event. You can close this window and open it from your home list.",
+    );
+    return { messages: [...session.messages], eventId: session.createdEventId };
+  }
+
+  session.messages.push({
+    id: createId("msg"),
+    role: "user",
+    body: trimmed,
+    createdAtIso: nowIso,
+  });
+
+  const reply = (body: string) => {
+    pushMessage(session, "system", body);
+  };
+
+  switch (session.step) {
+    case "title": {
+      if (trimmed.length < 3) {
+        reply("Titles need at least 3 characters. What should we call this event?");
+        break;
+      }
+      session.draft.title = trimmed;
+      session.step = "sport";
+      reply(`Nice — "${trimmed}". Is this **pickleball** or **tennis**?`);
+      break;
+    }
+    case "sport": {
+      const sport = parseSportToken(trimmed);
+      if (!sport) {
+        reply('Please answer with "pickleball" or "tennis".');
+        break;
+      }
+      session.draft.sport = sport;
+      session.step = "groupName";
+      reply("What group or crew is this for? (At least 2 characters.)");
+      break;
+    }
+    case "groupName": {
+      if (trimmed.length < 2) {
+        reply("Group names need at least 2 characters. Who is this for?");
+        break;
+      }
+      session.draft.groupName = trimmed;
+      session.step = "venueArea";
+      reply("Where are you hoping to play? Enter a venue or neighborhood (at least 2 characters).");
+      break;
+    }
+    case "venueArea": {
+      if (trimmed.length < 2) {
+        reply("Please add a bit more detail for the venue or area (at least 2 characters).");
+        break;
+      }
+      session.draft.venueArea = trimmed;
+      session.step = "dateIso";
+      reply("What date? Use **YYYY-MM-DD** (for example 2026-04-12).");
+      break;
+    }
+    case "dateIso": {
+      const dateIso = parseDateIsoInput(trimmed);
+      if (!dateIso) {
+        reply("I need a calendar date like **2026-04-12**. What date works?");
+        break;
+      }
+      session.draft.dateIso = dateIso;
+      session.step = "targetPlayers";
+      reply("How many players are you aiming for? Enter a whole number between **2** and **24**.");
+      break;
+    }
+    case "targetPlayers": {
+      const value = Number.parseInt(trimmed, 10);
+      if (Number.isNaN(value) || value < 2 || value > 24) {
+        reply("Enter a whole number between 2 and 24 for target players.");
+        break;
+      }
+      session.draft.targetPlayers = value;
+      session.step = "invitees";
+      reply(
+        "Who should we invite? Enter comma-separated names (for example: **Alex, Sam, Jordan**).",
+      );
+      break;
+    }
+    case "invitees": {
+      const invitees = parseInvitees(trimmed);
+      if (invitees.length === 0) {
+        reply("Add at least one invitee name, separated by commas.");
+        break;
+      }
+      session.draft.inviteesRaw = invitees.join(", ");
+      session.step = "confirm";
+      reply(formatPlanSummary(session.draft as Required<PlanChatDraft>));
+      break;
+    }
+    case "confirm": {
+      const lower = trimmed.toLowerCase();
+      const yes =
+        lower === "yes" ||
+        lower === "y" ||
+        lower === "yeah" ||
+        lower === "yep" ||
+        lower === "confirm" ||
+        lower === "create" ||
+        lower === "ok" ||
+        lower === "okay";
+      const no = lower === "no" || lower === "n" || lower === "nope";
+
+      if (!yes && !no) {
+        reply('Reply **yes** to create the event or **no** to change the invite list.');
+        break;
+      }
+
+      if (no) {
+        session.step = "invitees";
+        reply("No problem — who should we invite? (Comma-separated names.)");
+        break;
+      }
+
+      const draft = session.draft;
+      if (
+        !draft.title ||
+        !draft.sport ||
+        !draft.groupName ||
+        !draft.venueArea ||
+        !draft.dateIso ||
+        draft.targetPlayers === undefined ||
+        !draft.inviteesRaw
+      ) {
+        reply("Something was missing from the plan. Start over by closing and opening Try Chat again.");
+        break;
+      }
+
+      const event = createEvent({
+        title: draft.title,
+        sport: draft.sport,
+        organizerName: draft.organizerName,
+        groupName: draft.groupName,
+        venueArea: draft.venueArea,
+        dateIso: draft.dateIso,
+        targetPlayers: draft.targetPlayers,
+        inviteesRaw: draft.inviteesRaw,
+      });
+
+      session.step = "done";
+      session.createdEventId = event.id;
+      reply(
+        `All set — **${event.title}** is live. Share the invite link from the event page. I'm taking you there now.`,
+      );
+      return { messages: [...session.messages], eventId: event.id };
+    }
+    default: {
+      break;
+    }
+  }
+
+  return { messages: [...session.messages] };
 }

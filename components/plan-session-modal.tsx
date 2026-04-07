@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CreateEventForm } from "@/components/create-event-form";
+import { PlanChatModal } from "@/components/plan-chat-modal";
 
 type PlanSessionModalProps = {
   defaultOrganizerName: string;
@@ -9,6 +10,8 @@ type PlanSessionModalProps = {
 
 export function PlanSessionModal({ defaultOrganizerName }: PlanSessionModalProps) {
   const [open, setOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatSessionId, setChatSessionId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -25,13 +28,36 @@ export function PlanSessionModal({ defaultOrganizerName }: PlanSessionModalProps
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2.5 text-white hover:bg-emerald-700"
-      >
-        Plan a Session
-      </button>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2.5 text-white hover:bg-emerald-700"
+        >
+          Plan a Session
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setChatSessionId(crypto.randomUUID());
+            setChatOpen(true);
+          }}
+          className="inline-flex items-center justify-center rounded-md border border-emerald-600 bg-white px-4 py-2.5 text-emerald-800 hover:bg-emerald-50"
+        >
+          Try Chat
+        </button>
+      </div>
+
+      {chatSessionId ? (
+        <PlanChatModal
+          open={chatOpen}
+          sessionId={chatSessionId}
+          onClose={() => {
+            setChatOpen(false);
+            setChatSessionId(null);
+          }}
+        />
+      ) : null}
 
       {open ? (
         <div

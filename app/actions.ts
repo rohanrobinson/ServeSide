@@ -10,7 +10,9 @@ import {
   getEventById,
   getEventByToken,
   getEventTimeBlocks,
+  initPlanChatSessionState,
   submitAvailability,
+  submitPlanChatMessage,
 } from "@/lib/store";
 import { getCurrentUser } from "@/lib/current-user";
 import {
@@ -18,7 +20,7 @@ import {
   DEFAULT_TEST_USER,
   isTestUser,
 } from "@/lib/test-users";
-import type { AvailabilityChoice } from "@/lib/types";
+import type { AvailabilityChoice, PlanChatMessage } from "@/lib/types";
 
 export type ActionState = {
   ok: boolean;
@@ -166,4 +168,20 @@ export async function clearActiveUserAction() {
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
   });
+}
+
+export async function initPlanChatSessionAction(
+  sessionId: string,
+): Promise<{ messages: PlanChatMessage[] }> {
+  const organizerName = await getCurrentUser();
+  const messages = initPlanChatSessionState(sessionId, organizerName);
+  return { messages };
+}
+
+export async function sendPlanChatMessageAction(
+  sessionId: string,
+  body: string,
+): Promise<{ messages: PlanChatMessage[]; eventId?: string }> {
+  const organizerName = await getCurrentUser();
+  return submitPlanChatMessage(sessionId, organizerName, body);
 }

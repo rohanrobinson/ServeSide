@@ -40,17 +40,16 @@ Notes:
 4. Verify you are redirected to `/events/[eventId]`.
 5. Verify:
    - event details render
-   - invite link appears (`/join/[token]`)
-   - invite progress shows invitees as pending
+   - availability form appears on the event page
+   - invite progress shows players as pending
 
 ## 4) Test Flow B: Invitee submits availability
 
-1. Copy the invite link from the organizer event page.
-2. Open it in a new tab (or private window).
-3. Enter player name (must match an invitee name if you want progress to update, e.g. `Alex`).
-4. For each time block choose `yes`, `maybe`, or `no`.
-5. Add optional note and click **Save availability**.
-6. Repeat with 2+ additional invitees (`Sam`, `Jordan`) so recommendation quality improves.
+1. Open the event page `/events/[eventId]`.
+2. Enter player name (must match a selected player if you want progress to update, e.g. `Alex`).
+3. For each time block choose `yes`, `maybe`, or `no`.
+4. Add optional note and click **Save availability**.
+5. Repeat with 2+ additional players (`Sam`, `Jordan`) so recommendation quality improves.
 
 Expected:
 - success message appears after submit
@@ -123,10 +122,9 @@ Expected:
 ## 10) Local acceptance checklist
 
 - [ ] Can create event from `/`
-- [ ] Invite link opens `/join/[token]`
+- [ ] Event page shows availability form
 - [ ] 3 players can submit availability
 - [ ] Matrix updates with each response
 - [ ] Recommendation appears on organizer page
 - [ ] Finalize flow updates status and selected time
-- [ ] Notification feed shows invite + finalized entries
 - [ ] `/api/metrics` returns KPI JSON

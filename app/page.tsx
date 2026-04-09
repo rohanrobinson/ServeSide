@@ -24,7 +24,7 @@ export default async function Home() {
         <div className="pt-1">
           <PlanSessionModal defaultOrganizerName={currentUser} />
         </div>
-        <TestUserSwitcher currentUser={currentUser} />
+        <TestUserSwitcher key={currentUser} currentUser={currentUser} />
       </header>
 
       <section className="grid gap-3">

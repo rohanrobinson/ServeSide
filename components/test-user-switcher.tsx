@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { clearActiveUserAction, setActiveUserAction } from "@/app/actions";
 import { TEST_USERS } from "@/lib/test-users";
@@ -12,13 +12,21 @@ type TestUserSwitcherProps = {
 export function TestUserSwitcher({ currentUser }: TestUserSwitcherProps) {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+  const [selectedUser, setSelectedUser] = useState(currentUser);
+
+  useEffect(() => {
+    setSelectedUser(currentUser);
+  }, [currentUser]);
 
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-sky-100 bg-white px-3 py-3 text-sm sm:flex-row sm:flex-wrap sm:items-center">
       <span className="font-medium text-zinc-700">Testing as:</span>
       <form
-        action={(formData) => {
+        onSubmit={(event) => {
+          event.preventDefault();
           startTransition(async () => {
+            const formData = new FormData();
+            formData.set("selectedUser", selectedUser);
             await setActiveUserAction(formData);
             router.refresh();
           });
@@ -27,7 +35,8 @@ export function TestUserSwitcher({ currentUser }: TestUserSwitcherProps) {
       >
         <select
           name="selectedUser"
-          defaultValue={currentUser}
+          value={selectedUser}
+          onChange={(event) => setSelectedUser(event.target.value)}
           className="rounded-md border border-zinc-300 bg-white px-3 py-2 sm:min-w-44"
         >
           {TEST_USERS.map((user) => (
